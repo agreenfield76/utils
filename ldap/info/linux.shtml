@@ -1,0 +1,26 @@
+<!--#include virtual="/include0408/doctype.inc"-->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<!--#include virtual="/include0408/head.inc"-->
+<title>Setting up LDAP authentication on Linux</title>
+<meta name="description" content="Setting up LDAP authentication on Linux" />
+<meta name="keywords" content="Enterprise, Directory, LDAP, Linux, Authentication" />
+</head>
+<body>
+<!--#include virtual="/include0408/bodya.shtml"-->
+<a href="http://www.exeter.ac.uk/">UoE</a> &gt; IT Services &gt; LDAP Enterprise 
+Directory 
+<!--#include virtual="/include0408/bodyc.inc"-->
+<!-- your content goes here -->
+<h1>Setting up LDAP authentication on Linux</h1>
+<p>LDAP libraries must be installed.</p>
+<p>The following files are used to configure a Linux server to authenticate via LDAP:</p>
+<ul>
+<li><a href="ldap.conf">/etc/ldap.conf</a></li>
+<li><a href="nsswitch.conf">/etc/nsswitch.conf</a></li>
+</ul>
+<!--#include virtual="/include0408/bodyd.inc"-->
+Last modified on Tuesday 13 September, 2005 by Bill 
+<!--#include virtual="/include0408/bodye.inc"-->
+</body>
+</html>

@@ -1,0 +1,12 @@
+DirectoryIndex hds.php
+# Require helpdesk and norman group authentication
+AuthPAM_Enabled off
+AuthName "Helpdesk Support Site"
+AuthType Basic
+AuthzLDAPAuthoritative off
+AuthBasicProvider ldap
+AuthLDAPURL 'ldap://ldap.ex.ac.uk/ou=people,dc=exeter,dc=ac,dc=uk?uid'
+AuthLDAPGroupAttribute memberUid
+AuthLDAPGroupAttributeIsDN off
+Require ldap-group cn=helpdesk,ou=nis,ou=groups,dc=exeter,dc=ac,dc=uk
+Require ldap-group cn=norman,ou=nis,ou=groups,dc=exeter,dc=ac,dc=uk

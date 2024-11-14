@@ -1,0 +1,11 @@
+order deny,allow
+deny from all
+allow from .ex.ac.uk .exeter.ac.uk 144.173.
+AuthPAM_Enabled off
+AuthName "Corporate Systems Intranet Access"
+AuthType Basic
+AuthzLDAPAuthoritative off
+AuthBasicProvider ldap
+AuthLDAPURL 'ldaps://ldap.ex.ac.uk/ou=people,dc=exeter,dc=ac,dc=uk?uid?one?(|(uid=prl203)(uid=csnow)(uid=jabingha)(uid=demullan)(uid=lwensley)(uid=add201)(uid=ra246)(uid=awalsh)(uid=rcd206))'
+require valid-user
+satisfy all

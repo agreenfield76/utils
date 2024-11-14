@@ -1,0 +1,316 @@
+<?php
+/*=============================
+password change script
+original D.N.Gardner
+modified J.A.Aylward@ex.ac.uk for CMS
+modified R.A.Rudd@ex.ac.uk for VMCEN
+==============================*/
+
+$DEBUG = FALSE;
+$USERERROR = $PASSERROR = $NPASERROR = "";
+$username = $oldpass = $newpass1 = $newpass2 = "";
+//$error = "";
+//error_reporting(E_ALL);
+error_reporting(0);
+
+// Remove query_string to prevent Reflected Cross-Site Scripting
+str_replace( $_SERVER['QUERY_STRING'], '', $_SERVER['HTTP_REFERER'] );
+
+if(isset($_POST['username']) || isset($_POST['password']))
+{
+   if(isset($_POST['username'])) { $username = 	trim(filter_input(INPUT_POST,'username', FILTER_SANITIZE_STRING)); }
+   if(isset($_POST['password'])) { $oldpass  = 	trim(filter_input(INPUT_POST,'password', FILTER_SANITIZE_STRING)); }
+   if(isset($_POST['password1'])){ $newpass1 = 	trim(filter_input(INPUT_POST,'password1', FILTER_SANITIZE_STRING)); }
+   if(isset($_POST['password2'])){ $newpass2 =	trim(filter_input(INPUT_POST,'password2', FILTER_SANITIZE_STRING)); }
+
+   // Check args are all OK
+   if($username == '') {
+      $USERERROR = "You must supply your Username";
+   } else if($oldpass == '') {
+      $PASSERROR = "You must enter your current password";
+   } else {
+      $auth = _ssologin($username, $oldpass);
+      if(!$auth) {
+         sleep(5);
+         $auth = _ssologin($username, $oldpass); // try twice, sometimes it fails on the first attempt
+      }
+      if(!$auth) {
+         echo "<p>$error</p>";
+      } else {
+         if(checkpass($newpass1, $newpass2)) {
+            /* Create a TCP/IP socket. */
+            if(setPass($auth, $username, $newpass1)) {
+               echo "<p>Password change was <b>successful</b></p>";$error='success';
+            } else {
+               echo "<p>Password change <b style='color:red'>FAILED</b></p>";
+               echo "<p>$error</p>";
+            }
+            _ssologout($auth);
+         }
+      }
+   }
+}
+
+// Check the users password meets the required criteria
+function checkpass($newpass1, $newpass2)
+{
+   global $NPASERROR, $username;
+   $rvspwd = '';
+   $alpha = $digit = 0;
+   $pwdlen = strlen($newpass1);
+   if ($pwdlen < 6 || $pwdlen > 127)
+   {
+      $NPASERROR = "Your new password must contain at least six characters";
+      return 0;
+   }
+   if ($newpass1 == '' || $newpass2 == '')
+   {
+      $NPASERROR = "You must enter your new password in both entry fields";
+      return 0;
+   }
+   if ($newpass1 != $newpass2)
+   {
+      $NPASERROR = "The new password's you entered did not match";
+      return 0;
+   }
+   for($i=0; $i<$pwdlen;)
+   {
+      $ch = substr($newpass1, $i++, 1);
+      $rvspwd = $ch .= $rvspwd;     # construct reverse
+      if (preg_match("/[a-zA-Z]/", $ch)) { $alpha++;}
+      if (preg_match("/[0-9]/", $ch))    { $digit++;}
+   }
+   //echo "$alpha : $digit<br>";
+   if ($alpha < 2 || $digit < 1)
+   {
+      $NPASERROR = "Your new password must contain at least 2 letters and 1 number";
+      return 0;
+   }
+   if (strpos(strtolower($newpass1), strtolower($username)) !== FALSE)
+   {
+      $NPASERROR = "Your new password cannot contain your username";
+      return 0;
+   }
+   if (strpos(strtolower($rvspwd), strtolower($username)) !== FALSE)
+   {
+      $NPASERROR = "Your new password cannot contain your username in reverse";
+      return 0;
+   }
+   return 1;
+}
+
+// Function to login to SSO, returns a valid cookie if authentication suceeds
+function _ssologin($user, $pass)
+{
+   global $error, $PASSERROR;
+   if($curl = curl_init("https://sso.exeter.ac.uk/opensso/identity/authenticate"))
+   {
+      curl_setopt($curl, CURLOPT_POST, 1);
+      curl_setopt($curl, CURLOPT_POSTFIELDS, "username=$user&password=$pass&uri=realm=/people");
+      curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+      curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
+      $buffer = curl_exec($curl);
+      curl_close($curl);
+      if(! $buffer)
+      {
+         $error = "An error occured while authenticating with the SSO server";
+         return 0;
+      }
+   }
+   else
+   {
+      $error = "An error occured setting up a connection to the SSO server";
+      return 0;
+   }
+   if(!preg_match("/token.id=/i", $buffer))
+   {
+      $PASSERROR = "invalid username or password";
+      return 0;
+   }
+   $cookie = substr($buffer, 9);
+   return $cookie;
+}
+
+// Function to login to SSO, returns a valid cookie if authentication suceeds
+function _ssologout($auth)
+{
+   global $error;
+   if($curl = curl_init("https://sso.exeter.ac.uk/opensso/identity/logout"))
+   {
+      curl_setopt($curl, CURLOPT_POST, 1);
+      curl_setopt($curl, CURLOPT_POSTFIELDS, "token.id=$auth");
+      curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+      curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
+      $buffer = curl_exec($curl);
+      curl_close($curl);
+      if(! $buffer)
+      {
+         $error = "An error occured logging off of the SSO server";
+         return 0;
+      }
+   }
+   else
+   {
+      $error = "An error occured setting up a connection to the SSO server";
+      return 0;
+   }
+   return 1;
+}
+
+// Getline function used by setPass
+function getline($fp, $time)
+{
+   global $DEBUG, $msg;
+   $msg = "";    // Start with an empty msg array
+
+   while(!feof($fp))
+   {
+      $txt = fgets($fp, 1024);
+      if($DEBUG) echo "DEBUG : $txt<br>";
+      if(preg_match('/200 authorisation please./', $txt))
+      {
+         return 1;
+      }
+      elseif(preg_match('/200 username please./', $txt))
+      {
+         return 1;
+      }
+      elseif(preg_match('/200 new password please./', $txt))
+      {
+         return 1;
+      }
+      elseif(preg_match('/200-/', $txt))
+      {
+         $msg = substr($txt, 4);
+         return 1;
+      }
+      elseif(preg_match('/500 /', $txt))
+      {
+         $msg = substr($txt, 4);
+         return 0;
+      }
+      else
+      {
+         continue;
+      }
+   }
+   return 1;
+}
+
+// Function to send data, allows better debugging
+function sendline($fp, $cmd)
+{
+   global $DEBUG;
+   $cmd = rtrim($cmd);
+   if($DEBUG) echo "DEBUG : $cmd </br>";
+   fwrite($fp, "$cmd\n");
+}
+
+// Connect to vmcen and set the new password
+function setPass($auth, $user, $pass)
+{
+   global $error, $msg;
+
+   $ok = 1;
+   $port = 106;  // port for changing things
+   $fp = stream_socket_client("tcp://vmcen.ex.ac.uk:$port", $errno, $errstr, 10);
+   if(! $fp)
+   {
+     $error = "Unable to set up a connection to the password server: ".htmlspecialchars($errstr) ."<br>";
+     $error .= "Try again but if the problem persists please report this to the IT Help Desk";
+     return 0;
+   }
+   if($ok)
+   {
+      // Get started
+      //stream_set_timeout(20);
+      if($ok && ($ok = getline($fp, 10)))
+      {
+        sendline($fp, "HELO sso-pwdchange");
+      }
+      if($ok && ($ok = getline($fp, 10)))
+      {
+        sendline($fp, "AUTH $auth");
+      }
+      if($ok && ($ok = getline($fp, 10)))
+      {
+        sendline($fp, "USER $user");
+      }
+      if($ok && ($ok = getline($fp, 10)))
+      {
+        sendline($fp, "NEWPASS $pass");
+      }
+      if($ok && ($ok = getline($fp, 10)))
+      {
+         _ssologout($auth);
+         return 1;
+      }
+   }
+   // if we got this far then there was a problem
+   $error = "There was an error setting the password: ".htmlspecialchars($msg);
+   _ssologout($auth);
+   return 0;
+}
+
+if (!isset($error)){ ?>
+<p><strong>Remember that you should NEVER give your University password to anyone else. If you believe that someone else has discovered your password then change it immediately.</strong></p>
+<h2>Essential criteria for a password<br/></h2>
+<ul><li>Your password must contain at least six characters, preferably more (we recommend that you use 10, 12 or even more characters)<br/></li>
+<li>The first eight characters must contain at least two letters and at least one number.<br/></li>
+<li>It is a very good idea to mix capital and lower-case letters and to include punctuation characters in your password.<br/></li></ul>
+<h2>How to choose a password<br/></h2>
+<p>Make your password easy to remember – for example, choose a short phrase that makes sense to you and use its initial letters and a number, or combine two or three short words with a number between them.</p>
+<h2>What NOT to use<br/></h2>
+<p></p>
+<ul><li>Your username, or your username in reverse<br/></li>
+<li>Any word that appears in any dictionary, including technical and foreign words, even spelt backwards<br/></li>
+<li>Any recognisable name (personal names, names of pets, fictional characters, your department, make of your car etc.)<br/></li>
+<li>Any dictionary word slightly modified by adding a number to the end, or changing ‘i’ to ‘1’, ‘o’ to zero, etc.<br/></li>
+<li>Simple strings of keyboard letters such as ‘qwerty’ or ‘zxcvbn’<br/></li></ul>
+<p></p>
+<? } ?>
+
+<p><strong><font size="4" color="red">If you have your Exeter email setup through your iPhone, Blackberry or another mobile device, please make sure you update your password in account settings on this device. </strong></font></p>
+<p><strong><font size="4" color="red">Note for Staff Laptop users: Do not attempt to change your password when the laptop is away from the University and not connected to the network. Doing so may result in a loss of data.</strong></font></p>
+
+<? if (!isset($error)) { ?>
+<h3>Change your password here</h3>
+<p>Enter your username, current password, and chosen new password (twice), then click the <b>Change</b> button.</p>
+<?
+if (strlen($USERERROR)!=0) { $USERCOLOR = "red"; } else { $USERCOLOR = "black"; }
+if (strlen($PASSERROR)!=0) { $PASSCOLOR = "red"; } else { $PASSCOLOR = "black"; }
+if (strlen($NPASERROR)!=0) { $NPASCOLOR = "red"; } else { $NPASCOLOR = "black"; }
+
+if ($pos_get = strpos($_SERVER['PHP_SELF'], '?')) $page_uri = substr($_SERVER['PHP_SELF'], 0, $pos_get);
+?>
+
+<form id="changepass" name="changepass" method="post" autocomplete="off" action="<?php echo $page_uri; ?> onsubmit="document.changepass.submit.disabled='true';document.changepass.submit.value='  Please wait  '" \>
+  <table>
+    <tr>
+      <td><label style="color:<?=$USERCOLOR ?>;font-weight:bold">Username:</label></td>
+      <td><input type="text" id="username" name="username" size="16" tabindex="1" value="<?=$username?>"/></td>
+      <td><font style="color:red"><b><?=$USERERROR ?></b></font></td>
+    </tr>
+    <tr>
+
+      <td><label style="color:<?=$PASSCOLOR ?>;font-weight:bold">Current password:</label></td>
+      <td><input type="password" id="password" name="password" size="16" maxlength="127" tabindex="2" value="<?=$oldpass?>"/></td>
+      <td><font style="color:red"><b><?=$PASSERROR ?></b></font></td>
+    </tr>
+    <tr>
+      <td><label style="color:<?=$NPASCOLOR ?>;font-weight:bold">New password:</label></td>
+      <td><input type="password" id="password1" name="password1" size="16" maxlength="127" tabindex="3" /></td>
+      <td rowspan="2"><font style="color:red"><b><?=$NPASERROR ?></b></font></td>
+    </tr>
+    <tr>
+
+      <td><label style="color:<?=$NPASCOLOR ?>;font-weight:bold">Verify new password:</label></td>
+      <td><input type="password" id="password2" name="password2" size="16" maxlength="127" tabindex="4" /></td>
+    </tr>
+    <tr>
+      <td colspan="2"><div align="center">
+      <input style="font-size:16px" type="submit" id="submit" value="Change"/></td>
+      <td></td>
+    </tr>
+  </table>
+<? } ?>

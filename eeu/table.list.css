@@ -1,0 +1,68 @@
+div#main-content table.list
+{
+	color: black;
+	font-size: 18pt;
+	border: 2px solid #BBB;
+	margin-top: 5px;
+	margin-bottom: 15px;
+	align: center;
+	/*text-align: center;*/
+}
+
+div#main-content table.list tr.dark
+{
+	background-color: #F7F5E8;
+}
+
+div#main-content table.list tr
+{
+	vertical-align: middle;
+	background-color: white;
+}
+
+div#main-content table.list tr.totals
+{
+	color: #3D8CC4;
+	background-color: #FFF;
+	font-weight: bold;
+	font-size:125%;
+}
+
+div#main-content table.list tr.heading
+{
+	color: black;
+	background-color: #FFF;
+	font-weight: bold;
+	font-size:125%;
+}
+
+div#main-content table.list tr th
+{
+	padding: 4px;
+	font-size: 10pt;
+	font-weight: bold;
+	text-align: left;
+	vertical-align: bottom;
+	background-color: #BBB;
+	color: white;
+	text-transform: uppercase;
+}
+
+div#main-content table.list tr td,
+div#main-content table.list tr th
+{
+	padding: 3px;
+	padding-left: 6px;
+}
+
+div#main-content table.list th a,
+div#main-content table.list th a:link,
+div#main-content table.list th a:visited,
+div#main-content table.list th a:hover
+{
+	color: white;
+	text-decoration: none;
+	padding: 4px;
+	padding-left: 6px;
+	padding-right: 6px;
+}

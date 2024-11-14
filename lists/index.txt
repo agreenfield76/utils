@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+        <head>
+                <title>Mail-Lists</title>
+        </head>
+        <body>
+
+                <h1>The mail-lists system is undergoing maintenance</h1>
+                <p>Reference FSC 17620. It should be back by today 20:00</p>
+
+        </body>
+</html>
+

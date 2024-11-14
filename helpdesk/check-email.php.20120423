@@ -1,0 +1,37 @@
+<?php
+
+$site = 'as.exeter.ac.uk';
+include('/home/webs/' . $site . '/utils/helpdesk/template.php');
+$uri = '/utils/helpdesk/check-email.php';
+$heading = 'Helpdesk check of user\'s e-mail account';
+
+$content .= '
+<p>This form is provided to enable Helpdesk staff to obtain basic information
+  about a user\'s e-mail. Its use is restricted to nominated usernames only. </p>
+<p>Give your username and password and the username of the person whose details
+  are needed then click the <strong>Get Details</strong> button. </p>
+<form name="upf" method="post" action="https://email.exeter.ac.uk/cgi-bin/helpdesk">
+<input type="hidden" name="privuser" value="' . $_SERVER['PHP_AUTH_USER'] . '"/>
+<input type="hidden" name="password" value="' . $_SERVER['PHP_AUTH_PW'] . '"/>
+  <table>
+    <tr>
+    <tr>
+      <td><p>User\'s username:</p></td>
+      <td><input type="text" name="username" size="16"/></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td><input type="submit" value="Get Details"/></td>
+    </tr>
+  </table>
+</form>
+<script type="text/javascript" language="JavaScript1.1">
+<!--
+  document.upf.privuser.focus();
+// -->
+</script>
+';
+
+modifyTemplate($site, $uri, $heading, $content);
+
+?>
